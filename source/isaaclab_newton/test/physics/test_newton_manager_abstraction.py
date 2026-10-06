@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import logging
 from inspect import signature
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 
 import isaaclab_newton.physics.newton_manager as newton_manager_module
 import numpy as np
@@ -1188,38 +1188,50 @@ def test_cuda_graph_capture_uses_simulation_device(monkeypatch):
     ],
 )
 def test_fixed_root_pose_write_updates_solver(monkeypatch, asset_class, writer, selector):
-    """A model-backed root write immediately refreshes MuJoCo's root transform."""
-    builder = ModelBuilder()
-    SolverMuJoCo.register_custom_attributes(builder)
-    builder.begin_world()
-    initial_pose = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_identity())
-    root = builder.add_link(xform=initial_pose, mass=1.0, inertia=wp.mat33(np.eye(3)))
-    root_joint = builder.add_joint_fixed(-1, root, parent_xform=initial_pose)
-    builder.add_articulation([root_joint], label="robot")
-    builder.end_world()
-    model = builder.finalize(device="cpu")
-    view = ArticulationView(model, "robot", verbose=False)
-    body_com = view.get_attribute("body_com", model)[:, 0]
+    """A fixed-root write reaches the active batched model and MuJoCo solver."""
+
+    def make_model():
+        builder = ModelBuilder()
+        SolverMuJoCo.register_custom_attributes(builder)
+        builder.begin_world()
+        initial_pose = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_identity())
+        root = builder.add_link(xform=initial_pose, mass=1.0, inertia=wp.mat33(np.eye(3)))
+        root_joint = builder.add_joint_fixed(-1, root, parent_xform=initial_pose)
+        builder.add_articulation([root_joint], label="robot")
+        builder.end_world()
+        return builder.finalize(device="cpu")
+
+    binding_model = make_model()
+    active_model = make_model()
+    view = ArticulationView(binding_model, "robot", verbose=False)
+    body_com = view.get_attribute("body_com", binding_model)[:, 0]
     data = SimpleNamespace(
-        root_link_pose_w=view.get_root_transforms(model)[:, 0],
+        root_link_pose_w=view.get_root_transforms(binding_model)[:, 0],
         root_com_pose_w=wp.empty(1, dtype=wp.transform, device="cpu"),
         _sim_bind_body_com_pos_b=body_com,
         body_com_pos_b=body_com,
     )
+    all_indices = wp.array([0], dtype=wp.int32, device="cpu")
+    all_env_mask = wp.array([True], dtype=wp.bool, device="cpu")
     asset = SimpleNamespace(
         root_view=view,
         data=data,
         device="cpu",
-        _ALL_ENV_MASK=wp.array([True], dtype=wp.bool, device="cpu"),
+        num_instances=1,
+        _ALL_INDICES=all_indices,
+        _ALL_ENV_MASK=all_env_mask,
         _resolve_env_ids=lambda ids: ids,
         _resolve_mask=lambda mask, default: default if mask is None else mask,
         assert_shape_and_dtype=lambda *args: None,
         assert_shape_and_dtype_mask=lambda *args: None,
     )
-    solver = SolverMuJoCo(model)
+    asset._env_ids_to_mask = MethodType(asset_class._env_ids_to_mask, asset)
+    asset._write_fixed_root_pose_to_model = MethodType(asset_class._write_fixed_root_pose_to_model, asset)
+    solver = SolverMuJoCo(active_model)
+    monkeypatch.setattr(NewtonManager, "_model", active_model)
     monkeypatch.setattr(NewtonManager, "_solver", solver)
     target = wp.array([[1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0]], dtype=wp.transform, device="cpu")
-    selection = wp.array([0], dtype=wp.int32, device="cpu") if selector == "env_ids" else asset._ALL_ENV_MASK
+    selection = all_indices if selector == "env_ids" else all_env_mask
 
     getattr(asset_class, writer)(asset, root_pose=target, skip_forward=True, **{selector: selection})
 

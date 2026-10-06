@@ -204,6 +204,28 @@ class RigidObject(BaseRigidObject):
     Operations - Write to simulation.
     """
 
+    def _env_ids_to_mask(self, env_ids: wp.array) -> wp.array:
+        """Convert environment indices to a boolean Warp mask."""
+        if env_ids is self._ALL_INDICES:
+            return self._ALL_ENV_MASK
+        if isinstance(env_ids, torch.Tensor):
+            env_ids = wp.from_torch(env_ids)
+        mask = wp.zeros(self.num_instances, dtype=wp.bool, device=self.device)
+        wp.launch(shared_kernels.build_env_mask, dim=env_ids.shape[0], inputs=[mask, env_ids], device=self.device)
+        return mask
+
+    def _write_fixed_root_pose_to_model(self, env_mask: wp.array) -> None:
+        """Scatter cached fixed-root poses into the batched model."""
+        model_root_poses = self.root_view._get_attribute_array("joint_X_p", SimulationManager._model, _slice=0)
+        root_poses = self.data.root_link_pose_w
+        root_poses = getattr(root_poses, "warp", root_poses).reshape(model_root_poses.shape)
+        wp.launch(
+            shared_kernels.set_articulation_root_pose_model_per_world,
+            dim=model_root_poses.shape,
+            inputs=[env_mask, root_poses, model_root_poses],
+            device=self.device,
+        )
+
     def write_root_pose_to_sim_index(
         self,
         *,
@@ -372,6 +394,8 @@ class RigidObject(BaseRigidObject):
             device=self.device,
         )
         # Nonfloating root bindings write model.joint_X_p, not state.joint_q.
+        if not self.root_view.is_floating_base:
+            self._write_fixed_root_pose_to_model(self._env_ids_to_mask(env_ids))
         if (solver := SimulationManager._solver) is not None and not self.root_view.is_floating_base:
             solver.notify_model_changed(ModelFlags.JOINT_PROPERTIES)
         # Let the data class handle the invalidation of pose-dependent properties.
@@ -422,6 +446,8 @@ class RigidObject(BaseRigidObject):
             ],
             device=self.device,
         )
+        if not self.root_view.is_floating_base:
+            self._write_fixed_root_pose_to_model(env_mask)
         if (solver := SimulationManager._solver) is not None and not self.root_view.is_floating_base:
             solver.notify_model_changed(ModelFlags.JOINT_PROPERTIES)
         # Let the data class handle the invalidation of pose-dependent properties.
@@ -477,6 +503,8 @@ class RigidObject(BaseRigidObject):
             ],
             device=self.device,
         )
+        if not self.root_view.is_floating_base:
+            self._write_fixed_root_pose_to_model(self._env_ids_to_mask(env_ids))
         if (solver := SimulationManager._solver) is not None and not self.root_view.is_floating_base:
             solver.notify_model_changed(ModelFlags.JOINT_PROPERTIES)
         # Let the data class handle the invalidation of pose-dependent properties.
@@ -530,6 +558,8 @@ class RigidObject(BaseRigidObject):
             ],
             device=self.device,
         )
+        if not self.root_view.is_floating_base:
+            self._write_fixed_root_pose_to_model(env_mask)
         if (solver := SimulationManager._solver) is not None and not self.root_view.is_floating_base:
             solver.notify_model_changed(ModelFlags.JOINT_PROPERTIES)
         # Let the data class handle the invalidation of pose-dependent properties.

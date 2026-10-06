@@ -523,6 +523,24 @@ Root-level write kernels (1D — used by RigidObject + Articulation).
 
 
 @wp.kernel
+def set_articulation_root_pose_model_per_world(
+    env_mask: wp.array(dtype=wp.bool),
+    values: Any,
+    model_root_poses: Any,
+):
+    """Scatter root poses into a batched model for selected worlds."""
+    world_id, articulation_id = wp.tid()
+    if env_mask[world_id]:
+        model_root_poses[world_id, articulation_id] = values[world_id, articulation_id]
+
+
+@wp.kernel
+def build_env_mask(mask: wp.array(dtype=wp.bool), indices: wp.array(dtype=Any)):
+    """Set selected environment indices in a boolean mask."""
+    mask[wp.int32(indices[wp.tid()])] = True
+
+
+@wp.kernel
 def set_root_link_pose_to_sim_index(
     data: wp.array(dtype=wp.transformf),
     env_ids: wp.array(dtype=Any),
