@@ -997,20 +997,25 @@ def test_cuda_graph_capture_uses_simulation_device(monkeypatch):
     ],
 )
 def test_fixed_root_pose_write_updates_solver(monkeypatch, asset_class, writer, selector):
-    """A model-backed root write immediately refreshes MuJoCo's root transform."""
-    builder = ModelBuilder()
-    SolverMuJoCo.register_custom_attributes(builder)
-    builder.begin_world()
-    initial_pose = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_identity())
-    root = builder.add_link(xform=initial_pose, mass=1.0, inertia=wp.mat33(np.eye(3)))
-    root_joint = builder.add_joint_fixed(-1, root, parent_xform=initial_pose)
-    builder.add_articulation([root_joint], label="robot")
-    builder.end_world()
-    model = builder.finalize(device="cpu")
-    view = ArticulationView(model, "robot", verbose=False)
-    body_com = view.get_attribute("body_com", model)[:, 0]
+    """A fixed-root write reaches the active model used by the solver."""
+
+    def make_model():
+        builder = ModelBuilder()
+        SolverMuJoCo.register_custom_attributes(builder)
+        builder.begin_world()
+        initial_pose = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_identity())
+        root = builder.add_link(xform=initial_pose, mass=1.0, inertia=wp.mat33(np.eye(3)))
+        root_joint = builder.add_joint_fixed(-1, root, parent_xform=initial_pose)
+        builder.add_articulation([root_joint], label="robot")
+        builder.end_world()
+        return builder.finalize(device="cpu")
+
+    binding_model = make_model()
+    active_model = make_model()
+    view = ArticulationView(binding_model, "robot", verbose=False)
+    body_com = view.get_attribute("body_com", binding_model)[:, 0]
     data = SimpleNamespace(
-        root_link_pose_w=view.get_root_transforms(model)[:, 0],
+        root_link_pose_w=view.get_root_transforms(binding_model)[:, 0],
         root_com_pose_w=wp.empty(1, dtype=wp.transform, device="cpu"),
         _sim_bind_body_com_pos_b=body_com,
         body_com_pos_b=body_com,
@@ -1025,7 +1030,8 @@ def test_fixed_root_pose_write_updates_solver(monkeypatch, asset_class, writer, 
         assert_shape_and_dtype=lambda *args: None,
         assert_shape_and_dtype_mask=lambda *args: None,
     )
-    solver = SolverMuJoCo(model)
+    solver = SolverMuJoCo(active_model)
+    monkeypatch.setattr(NewtonManager, "_model", active_model)
     monkeypatch.setattr(NewtonManager, "_solver", solver)
     target = wp.array([[1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0]], dtype=wp.transform, device="cpu")
     selection = wp.array([0], dtype=wp.int32, device="cpu") if selector == "env_ids" else asset._ALL_ENV_MASK
