@@ -78,6 +78,40 @@ def test_create_dataset_file(temp_dir, monkeypatch):
     assert os.path.exists(os.path.join(temp_dir, dataset_file_name))
 
 
+@pytest.mark.parametrize(
+    ("operation", "mode"),
+    [
+        ("open", "r"),
+        ("create", "w"),
+    ],
+)
+@pytest.mark.parametrize(
+    "file_access_error",
+    [
+        BlockingIOError(11, "Unable to lock file"),
+        PermissionError(13, "Permission denied"),
+    ],
+)
+def test_file_access_error_reports_path_and_mode(temp_dir, monkeypatch, operation, mode, file_access_error):
+    """Test file-access failures identify the HDF5 path and mode."""
+    dataset_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.hdf5")
+
+    def fail_to_open(*args, **kwargs):
+        raise file_access_error
+
+    monkeypatch.setattr(h5py, "File", fail_to_open)
+    dataset_file_handler = HDF5DatasetFileHandler()
+
+    with pytest.raises(RuntimeError) as exc_info:
+        getattr(dataset_file_handler, operation)(dataset_file_path)
+
+    assert str(exc_info.value) == (
+        f"Unable to open HDF5 dataset file '{dataset_file_path}' in mode '{mode}'. "
+        "The file may be locked by another process, or its path may not be accessible with the current permissions."
+    )
+    assert exc_info.value.__cause__ is file_access_error
+
+
 def test_add_env_args_preserves_existing_args_after_reopen(temp_dir):
     """Test extending environment arguments after reopening a dataset."""
     dataset_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.hdf5")

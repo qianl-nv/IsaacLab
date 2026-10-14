@@ -22,6 +22,19 @@ from .episode_data import EpisodeData
 DATASET_FORMAT_VERSION = 1
 
 
+def _open_hdf5_file(file_path: str, mode: str):
+    """Open an HDF5 file with actionable lock and permission diagnostics."""
+    import h5py
+
+    try:
+        return h5py.File(file_path, mode)
+    except (BlockingIOError, PermissionError) as error:
+        raise RuntimeError(
+            f"Unable to open HDF5 dataset file '{file_path}' in mode '{mode}'. "
+            "The file may be locked by another process, or its path may not be accessible with the current permissions."
+        ) from error
+
+
 def convert_pose_quat_wxyz_to_xyzw(pose: np.ndarray) -> np.ndarray:
     """Convert pose quaternion from WXYZ format to XYZW format.
 
@@ -52,18 +65,14 @@ class HDF5DatasetFileHandler(DatasetFileHandlerBase):
 
     def open(self, file_path: str, mode: str = "r"):
         """Open an existing dataset file."""
-        import h5py
-
         if self._hdf5_file_stream is not None:
             raise RuntimeError("HDF5 dataset file stream is already in use")
-        self._hdf5_file_stream = h5py.File(file_path, mode)
+        self._hdf5_file_stream = _open_hdf5_file(file_path, mode)
         self._hdf5_data_group = self._hdf5_file_stream["data"]
         self._demo_count = len(self._hdf5_data_group)
 
     def create(self, file_path: str, env_name: str | None = None):
         """Create a new dataset file."""
-        import h5py
-
         if self._hdf5_file_stream is not None:
             raise RuntimeError("HDF5 dataset file stream is already in use")
         if not file_path.endswith(".hdf5"):
@@ -71,7 +80,7 @@ class HDF5DatasetFileHandler(DatasetFileHandlerBase):
         dir_path = os.path.dirname(file_path)
         if dir_path:
             os.makedirs(dir_path, exist_ok=True)
-        self._hdf5_file_stream = h5py.File(file_path, "w")
+        self._hdf5_file_stream = _open_hdf5_file(file_path, "w")
 
         # Set the dataset format version
         self._hdf5_file_stream.attrs["format_version"] = DATASET_FORMAT_VERSION
