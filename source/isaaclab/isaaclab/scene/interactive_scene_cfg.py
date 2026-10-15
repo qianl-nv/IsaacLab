@@ -5,9 +5,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from dataclasses import MISSING
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from isaaclab.cloner import CloneCfg, InclusionSet
 from isaaclab.cloner import add as clone_add
@@ -152,37 +152,61 @@ class InteractiveSceneCfg:
 
 def add(
     target: InteractiveSceneCfg,
-    source: InteractiveSceneCfg,
+    source: InteractiveSceneCfg | object | None,
     *,
     asset_skip: Callable[[AssetBaseCfg], bool] | None = None,
+    mode: Literal["clone", "merge"] = "clone",
+    on_conflict: Literal["error", "replace"] = "error",
+    bindings: MutableMapping[str, str] | None = None,
 ) -> InteractiveSceneCfg:
-    """Fold the source scene's environment assets into ``target`` as a new clone combination.
+    """Add a source scene to ``target``.
 
-    ``target`` accumulates the fold: it keeps its execution settings and clone
-    combinations, gains the source scene's assets, and is returned. Both scenes
-    contribute spawned :class:`~isaaclab.assets.AssetBaseCfg` fields at literal
+    In ``"clone"`` mode, ``target`` accumulates heterogeneous clone
+    combinations. Both scenes contribute spawned
+    :class:`~isaaclab.assets.AssetBaseCfg` fields at literal
     ``{ENV_REGEX_NS}/Leaf`` roots. An asset equal to an existing binding reuses
-    it (each binding at most once per call); other assets receive a unique field
-    name and prim path. Sensors, terrain importers, rigid-object collections,
-    and spawnless assets do not participate and are cleared from ``target``.
-    Global assets are not composed: skip them with :paramref:`asset_skip` and
-    attach shared world assets after the fold. Both operands are consumed.
+    it; other assets receive a unique field name and prim path. Sensors,
+    terrain importers, rigid-object collections, spawnless assets, and global
+    assets do not participate. This is the default for backward compatibility.
+
+    In ``"merge"`` mode, every declared source field is added to the same scene.
+    This mode supports component-based scene construction: assets, sensors,
+    terrain, collections, global entities, and scene execution settings remain
+    available together. Source fields replace matching target fields only when
+    ``on_conflict="replace"``. The optional ``bindings`` mapping records each
+    source field's final target field name.
 
     Args:
         target: Scene that accumulates the fold.
-        source: Scene whose environment assets are added. It must not declare
-            clone combinations of its own.
+        source: Scene or scene fragment to add. ``None`` is ignored in merge mode.
         asset_skip: Optional predicate called with each spawned asset
-            configuration. An asset is omitted when the predicate returns
-            :data:`True`. The predicate must not mutate the configuration.
+            configuration in clone mode. An asset is omitted when the predicate
+            returns :data:`True`.
+        mode: ``"clone"`` for heterogeneous clone composition or ``"merge"``
+            for component composition.
+        on_conflict: How merge mode handles a non-None target field with the
+            same name. Defaults to ``"error"``.
+        bindings: Optional mutable mapping updated from source field names to
+            their final names in ``target``.
 
     Returns:
-        ``target``, extended with the source scene's assets and one new clone combination.
+        The mutated ``target`` scene.
 
     Raises:
-        ValueError: If a scene has no environment asset or an asset root is
-            global or malformed, or if the added scene declares clone combinations.
+        ValueError: If an option is invalid, a merge field conflicts, or clone
+            composition receives an unsupported scene.
     """
+    if mode == "merge":
+        if asset_skip is not None:
+            raise ValueError("asset_skip applies only to clone mode.")
+        return _merge(target, source, on_conflict=on_conflict, bindings=bindings)
+    if mode != "clone":
+        raise ValueError(f"Unsupported scene add mode: {mode!r}.")
+    if source is None or not isinstance(source, InteractiveSceneCfg):
+        raise ValueError("clone mode requires an InteractiveSceneCfg source.")
+    if on_conflict != "error":
+        raise ValueError("on_conflict applies only to merge mode.")
+
     if source.clone_cfg.clone_combinations:
         raise ValueError("the added scene must not declare clone combinations; fold it as the base scene instead.")
 
@@ -223,6 +247,39 @@ def add(
         added_names.append(target_name)
 
     clone_add(target.clone_cfg, InclusionSet(assets=list(dict.fromkeys(added_names))))
+    if bindings is not None:
+        bindings.update(zip((name for name, _ in source_assets), added_names))
+    return target
+
+
+def _merge(
+    target: InteractiveSceneCfg,
+    source: object | None,
+    *,
+    on_conflict: Literal["error", "replace"],
+    bindings: MutableMapping[str, str] | None,
+) -> InteractiveSceneCfg:
+    """Merge one component scene into a common target scene."""
+    if source is None:
+        return target
+    if on_conflict not in ("error", "replace"):
+        raise ValueError(f"Unsupported scene field conflict policy: {on_conflict!r}.")
+
+    base_fields = InteractiveSceneCfg.__dataclass_fields__
+    for name, value in vars(source).items():
+        if name.startswith("_") or value is None:
+            continue
+        target_value = getattr(target, name, None)
+        if (
+            target_value is not None
+            and target_value is not value
+            and name not in base_fields
+            and on_conflict == "error"
+        ):
+            raise ValueError(f"Scene field '{name}' is already defined.")
+        setattr(target, name, value)
+        if bindings is not None and name not in base_fields:
+            bindings[name] = name
     return target
 
 
