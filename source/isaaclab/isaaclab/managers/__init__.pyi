@@ -10,6 +10,7 @@ __all__ = [
     "CommandTerm",
     "CurriculumManager",
     "EventManager",
+    "event_add",
     "ManagerBase",
     "ManagerTermBase",
     "ActionTermCfg",
@@ -35,6 +36,7 @@ __all__ = [
 from .action_manager import ActionManager, ActionTerm
 from .command_manager import CommandManager, CommandTerm
 from .curriculum_manager import CurriculumManager
+from .event_composition import event_add
 from .event_manager import EventManager
 from .manager_base import ManagerBase, ManagerTermBase
 from .manager_term_cfg import (
@@ -50,12 +52,7 @@ from .manager_term_cfg import (
     TerminationTermCfg,
 )
 from .observation_manager import ObservationManager
-from .recorder_manager import (
-    DatasetExportMode,
-    RecorderManager,
-    RecorderManagerBaseCfg,
-    RecorderTerm,
-)
+from .recorder_manager import DatasetExportMode, RecorderManager, RecorderManagerBaseCfg, RecorderTerm
 from .reward_manager import RewardManager
 from .scene_entity_cfg import SceneEntityCfg
 from .termination_manager import TerminationManager

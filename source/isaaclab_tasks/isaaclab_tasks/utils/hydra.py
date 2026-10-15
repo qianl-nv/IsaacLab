@@ -35,10 +35,9 @@ from collections.abc import Callable, Mapping, Sequence
 
 import hydra
 from hydra.core.config_store import ConfigStore
-from omegaconf import OmegaConf
-
 from isaaclab.envs.utils.spaces import replace_env_cfg_spaces_with_strings, replace_strings_with_env_cfg_spaces
 from isaaclab.utils import configclass, replace_slices_with_strings, replace_strings_with_slices
+from omegaconf import OmegaConf
 
 from .preset_target import PresetTarget
 
@@ -468,6 +467,7 @@ def resolve_task_config(
     agent_cfg_entry_point: str | None,
     play_mode: bool = False,
     overrides: Sequence[str] | None = None,
+    materialize: bool = True,
 ):
     """Resolve env and agent configs with Hydra overrides, presets, and scalars fully applied.
 
@@ -483,6 +483,8 @@ def resolve_task_config(
         overrides: Optional Hydra arguments to use instead of reading them from
             :data:`sys.argv`. This keeps programmatic task composition on the same
             path as command-line composition. Defaults to None.
+        materialize: Whether to run the task's optional environment configuration
+            materializer after applying all overrides. Defaults to True.
 
     Returns:
         Tuple of (env_cfg, agent_cfg) fully resolved.
@@ -493,6 +495,10 @@ def resolve_task_config(
     )
     resolved = {}
     _run_hydra(task, env_cfg, agent_cfg, hydra_args, lambda e, a: resolved.update(env_cfg=e, agent_cfg=a))
+    if materialize:
+        from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
+
+        resolved["env_cfg"] = materialize_env_cfg(task, resolved["env_cfg"])
     return resolved["env_cfg"], resolved["agent_cfg"]
 
 
@@ -514,7 +520,13 @@ def hydra_task_config(task_name: str, agent_cfg_entry_point: str, play_mode: boo
         def wrapper(*args, **kwargs):
             task = task_name.split(":")[-1]
             env_cfg, agent_cfg, hydra_args = register_task(task, agent_cfg_entry_point, play_mode=play_mode)
-            _run_hydra(task, env_cfg, agent_cfg, hydra_args, lambda e, a: func(e, a, *args, **kwargs))
+
+            def invoke(env_cfg, agent_cfg):
+                from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
+
+                func(materialize_env_cfg(task, env_cfg), agent_cfg, *args, **kwargs)
+
+            _run_hydra(task, env_cfg, agent_cfg, hydra_args, invoke)
 
         return wrapper
 
@@ -793,9 +805,7 @@ def apply_overrides(
         hydra_cfg[sec] = (
             cfgs[sec].to_dict()
             if hasattr(cfgs[sec], "to_dict")
-            else dict(cfgs[sec])
-            if isinstance(cfgs[sec], Mapping)
-            else cfgs[sec]
+            else dict(cfgs[sec]) if isinstance(cfgs[sec], Mapping) else cfgs[sec]
         )
 
     _apply_preset_scalars(cfgs, hydra_cfg, preset_scalar)

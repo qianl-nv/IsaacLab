@@ -7,6 +7,8 @@ __all__ = [
     "import_packages",
     "get_checkpoint_path",
     "load_cfg_from_registry",
+    "load_env_cfg_materializer",
+    "materialize_env_cfg",
     "parse_env_cfg",
     "PresetCfg",
     "preset",
@@ -18,8 +20,14 @@ __all__ = [
     "SuccessMonitorCfg",
 ]
 
-from .hydra import PresetCfg, preset, hydra_task_config, resolve_task_config, resolve_presets
+from .hydra import PresetCfg, hydra_task_config, preset, resolve_presets, resolve_task_config
 from .importer import import_packages
-from .parse_cfg import get_checkpoint_path, load_cfg_from_registry, parse_env_cfg
+from .parse_cfg import (
+    get_checkpoint_path,
+    load_cfg_from_registry,
+    load_env_cfg_materializer,
+    materialize_env_cfg,
+    parse_env_cfg,
+)
 from .preset_cli import setup_preset_cli
 from .success_monitor import SuccessMonitor, SuccessMonitorCfg

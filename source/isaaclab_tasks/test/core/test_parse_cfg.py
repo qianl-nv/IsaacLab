@@ -5,10 +5,11 @@
 
 """Tests for :func:`isaaclab_tasks.utils.parse_cfg.parse_env_cfg`."""
 
-import pytest
+import gymnasium as gym
 
 import isaaclab_tasks  # noqa: F401
-from isaaclab_tasks.utils import parse_env_cfg
+import pytest
+from isaaclab_tasks.utils import materialize_env_cfg, parse_env_cfg
 
 
 def test_parse_env_cfg_rejects_bare_string_overrides():
@@ -36,6 +37,35 @@ def test_parse_env_cfg_applies_explicit_device_override():
     env_cfg = parse_env_cfg("Isaac-Cartpole", device="cpu")
 
     assert env_cfg.sim.device == "cpu"
+
+
+def test_parse_env_cfg_materializes_after_explicit_overrides():
+    """Materializers observe final parser overrides and run once."""
+    task_name = "Isaac-Test-Env-Cfg-Materializer"
+    source_cfg = parse_env_cfg("Isaac-Cartpole")
+    observed_num_envs = []
+
+    def materializer(cfg):
+        observed_num_envs.append(cfg.scene.num_envs)
+        cfg.decimation = 17
+        return cfg
+
+    gym.register(
+        id=task_name,
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        kwargs={
+            "env_cfg_entry_point": source_cfg,
+            "env_cfg_materializer_entry_point": materializer,
+        },
+    )
+    try:
+        env_cfg = parse_env_cfg(task_name, num_envs=7)
+        assert env_cfg.scene.num_envs == 7
+        assert env_cfg.decimation == 17
+        assert materialize_env_cfg(task_name, env_cfg) is env_cfg
+        assert observed_num_envs == [7]
+    finally:
+        del gym.registry[task_name]
 
 
 @pytest.mark.parametrize("missing_module", ["pinocchio", "pink", "qpsolvers", "daqp", "unrelated_dependency"])

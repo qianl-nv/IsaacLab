@@ -7,22 +7,67 @@
 
 from __future__ import annotations
 
+import gymnasium as gym
 import importlib
 import importlib.util
 import inspect
 import os
 import re
 import warnings
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
-
-import gymnasium as gym
 import yaml
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 from isaaclab_tasks.utils.hydra import _user_stacklevel, resolve_task_config
 
 if TYPE_CHECKING:
     from isaaclab.envs import DirectRLEnvCfg, ManagerBasedRLEnvCfg
+
+
+def load_env_cfg_materializer(task_name: str) -> Callable[[object], object] | None:
+    """Load the optional environment-configuration materializer registered for a task.
+
+    Args:
+        task_name: The registered Gym environment name.
+
+    Returns:
+        The materializer callable, or ``None`` when the task does not register one.
+    """
+    spec = gym.spec(task_name.split(":")[-1])
+    entry_point = spec.kwargs.get("env_cfg_materializer_entry_point")
+    if entry_point is None:
+        return None
+    if callable(entry_point):
+        return entry_point
+    if isinstance(entry_point, str):
+        mod_name, attr_name = entry_point.split(":")
+        return getattr(importlib.import_module(mod_name), attr_name)
+    raise TypeError(f"Task '{task_name}' has an invalid env_cfg_materializer_entry_point: {entry_point!r}.")
+
+
+def materialize_env_cfg(task_name: str, env_cfg: object) -> object:
+    """Materialize a task's environment configuration at most once.
+
+    Materialization is intentionally separate from loading so callers can apply
+    Hydra, CLI, or programmatic overrides to the source configuration first.
+
+    Args:
+        task_name: The registered Gym environment name.
+        env_cfg: Source environment configuration.
+
+    Returns:
+        The completed environment configuration.
+    """
+    if getattr(env_cfg, "_isaaclab_materialized", False):
+        return env_cfg
+    materializer = load_env_cfg_materializer(task_name)
+    if materializer is None:
+        return env_cfg
+    materialized_cfg = materializer(env_cfg)
+    if materialized_cfg is None:
+        raise TypeError(f"Environment configuration materializer for task '{task_name}' returned None.")
+    setattr(materialized_cfg, "_isaaclab_materialized", True)
+    return materialized_cfg
 
 
 def load_cfg_from_registry(task_name: str, entry_point_key: str) -> dict | object:
@@ -192,7 +237,7 @@ def parse_env_cfg(
         )
 
     # Compose the registered task through the same boundary used by Hydra entry points.
-    cfg, _ = resolve_task_config(task_name, None, overrides=overrides)
+    cfg, _ = resolve_task_config(task_name, None, overrides=overrides, materialize=False)
 
     # check that it is not a dict
     # we assume users always use a class for the configuration
@@ -209,7 +254,7 @@ def parse_env_cfg(
     if num_envs is not None:
         cfg.scene.num_envs = num_envs
 
-    return cfg
+    return materialize_env_cfg(task_name, cfg)
 
 
 def get_checkpoint_path(

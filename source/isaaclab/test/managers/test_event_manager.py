@@ -18,13 +18,12 @@ simulation_app = AppLauncher(headless=True).app
 """Rest everything follows."""
 
 
+import torch
 from collections import namedtuple
 
 import pytest
-import torch
-
 from isaaclab.envs import ManagerBasedEnv
-from isaaclab.managers import EventManager, EventTermCfg, ManagerTermBase, ManagerTermBaseCfg
+from isaaclab.managers import EventManager, EventTermCfg, ManagerTermBase, ManagerTermBaseCfg, event_add
 from isaaclab.sim import SimulationContext
 from isaaclab.utils import configclass
 
@@ -82,6 +81,21 @@ class increment_dummy2_by_one_class(ManagerTermBase):
         env_ids: torch.Tensor,
     ) -> None:
         env.dummy2[env_ids] += 1
+
+
+def test_event_add_preserves_order_and_rejects_duplicates():
+    """Compose mapping and configclass sources without hiding name collisions."""
+    first = EventTermCfg(func=reset_dummy1_to_zero, mode="reset")
+
+    @configclass
+    class AddedEventsCfg:
+        second = EventTermCfg(func=increment_dummy1_by_one, mode="reset")
+
+    events = event_add({}, {"first": first})
+    assert event_add(events, AddedEventsCfg()) is events
+    assert list(events) == ["first", "second"]
+    with pytest.raises(ValueError, match="already defined"):
+        event_add(events, {"first": first})
 
 
 @pytest.fixture
