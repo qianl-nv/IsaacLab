@@ -50,6 +50,7 @@ with contextlib.suppress(ImportError):
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse RL-Games training arguments."""
+    from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
     from isaaclab_tasks.utils import setup_preset_cli
 
     parser = argparse.ArgumentParser(description="Train an RL agent with RL-Games.")
@@ -95,38 +96,39 @@ def run(argv: list[str]) -> None:
 
     args_cli = _parse_args(argv)
     with startup_screen(args_cli, num_stages=3) as screen:
-        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent)
+        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent, materialize=False)
+        apply_env_overrides(args_cli, env_cfg)
+        validate_distributed_device(args_cli)
+
+        if args_cli.seed == -1:
+            args_cli.seed = random.randint(0, 10000)
+
+        agent_cfg["params"]["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["params"]["seed"]
+        agent_cfg["params"]["config"]["max_epochs"] = (
+            args_cli.max_iterations
+            if args_cli.max_iterations is not None
+            else agent_cfg["params"]["config"]["max_epochs"]
+        )
+        if args_cli.checkpoint is not None and args_cli.checkpoint not in CHECKPOINT_SELECTORS:
+            resume_path = retrieve_file_path(args_cli.checkpoint)
+            agent_cfg["params"]["load_checkpoint"] = True
+            agent_cfg["params"]["load_path"] = resume_path
+            print(f"[INFO]: Loading model checkpoint from: {agent_cfg['params']['load_path']}")
+        train_sigma = float(args_cli.sigma) if args_cli.sigma is not None else None
+
+        if args_cli.distributed:
+            agent_cfg["params"]["seed"] += int(os.getenv("RANK", "0"))
+            agent_cfg["params"]["config"]["device"] = env_cfg.sim.device
+            agent_cfg["params"]["config"]["device_name"] = env_cfg.sim.device
+            agent_cfg["params"]["config"]["multi_gpu"] = True
+
+        env_cfg.seed = agent_cfg["params"]["seed"]
+
+        env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
         pre_launch_video_config(env_cfg, args_cli=args_cli)
         show_run_summary(screen, args_cli, env_cfg, library="rl_games", action="train")
         screen.stage("Launching simulation")
         with launch_simulation(env_cfg, args_cli):
-            apply_env_overrides(args_cli, env_cfg)
-            validate_distributed_device(args_cli)
-
-            if args_cli.seed == -1:
-                args_cli.seed = random.randint(0, 10000)
-
-            agent_cfg["params"]["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["params"]["seed"]
-            agent_cfg["params"]["config"]["max_epochs"] = (
-                args_cli.max_iterations
-                if args_cli.max_iterations is not None
-                else agent_cfg["params"]["config"]["max_epochs"]
-            )
-            if args_cli.checkpoint is not None and args_cli.checkpoint not in CHECKPOINT_SELECTORS:
-                resume_path = retrieve_file_path(args_cli.checkpoint)
-                agent_cfg["params"]["load_checkpoint"] = True
-                agent_cfg["params"]["load_path"] = resume_path
-                print(f"[INFO]: Loading model checkpoint from: {agent_cfg['params']['load_path']}")
-            train_sigma = float(args_cli.sigma) if args_cli.sigma is not None else None
-
-            if args_cli.distributed:
-                agent_cfg["params"]["seed"] += int(os.getenv("RANK", "0"))
-                agent_cfg["params"]["config"]["device"] = env_cfg.sim.device
-                agent_cfg["params"]["config"]["device_name"] = env_cfg.sim.device
-                agent_cfg["params"]["config"]["multi_gpu"] = True
-
-            env_cfg.seed = agent_cfg["params"]["seed"]
-
             config_name = agent_cfg["params"]["config"]["name"]
             log_root_path = os.path.join("logs", "rl_games", config_name)
             if "pbt" in agent_cfg and agent_cfg["pbt"]["directory"] != ".":

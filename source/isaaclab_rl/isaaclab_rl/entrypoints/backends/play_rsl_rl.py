@@ -48,6 +48,7 @@ from isaaclab_rl.utils.pretrained_checkpoint import (
 )
 
 import isaaclab_tasks  # noqa: F401
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import (
     get_checkpoint_path,
     setup_preset_cli,
@@ -114,28 +115,29 @@ sys.argv = [sys.argv[0]] + remaining_args
 installed_version = metadata.version("rsl-rl-lib")
 
 
-@hydra_task_config(args_cli.task, args_cli.agent, play_mode=not args_cli.train_env_cfg)
+@hydra_task_config(args_cli.task, args_cli.agent, play_mode=not args_cli.train_env_cfg, materialize=False)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
     """Play with RSL-RL agent."""
+    task_name = args_cli.task.split(":")[-1]
+    train_task_name = task_name.replace("-Play", "")
+
+    agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
+    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    # Warp reads its determinism mode at module build time, so request it before the env exists.
+    request_determinism(args_cli, env_cfg)
+
+    agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, installed_version)
+
+    # note: certain randomizations occur in the environment initialization so we set the seed here
+    env_cfg.seed = agent_cfg.seed
+    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+
+    env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     pre_launch_video_config(env_cfg, args_cli=args_cli)
     with startup_screen(args_cli, num_stages=3) as screen:
         show_run_summary(screen, args_cli, env_cfg, library="rsl_rl", action="play")
         screen.stage("Launching simulation")
         with launch_simulation(env_cfg, args_cli):
-            task_name = args_cli.task.split(":")[-1]
-            train_task_name = task_name.replace("-Play", "")
-
-            agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
-            env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-            # Warp reads its determinism mode at module build time, so request it before the env exists.
-            request_determinism(args_cli, env_cfg)
-
-            agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, installed_version)
-
-            # note: certain randomizations occur in the environment initialization so we set the seed here
-            env_cfg.seed = agent_cfg.seed
-            env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
             log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
             log_root_path = os.path.abspath(log_root_path)
             print(f"[INFO] Loading experiment from directory: {log_root_path}")

@@ -40,6 +40,7 @@ from isaaclab_rl.utils.pretrained_checkpoint import (
 )
 
 import isaaclab_tasks  # noqa: F401
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import (
     get_checkpoint_path,
     resolve_task_config,
@@ -101,24 +102,25 @@ sys.argv = [sys.argv[0]] + hydra_args
 
 def main():
     """Play with stable-baselines agent."""
-    env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent, play_mode=not args_cli.train_env_cfg)
+    env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent, play_mode=not args_cli.train_env_cfg, materialize=False)
+    task_name = args_cli.task.split(":")[-1]
+    train_task_name = task_name.replace("-Play", "")
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)
+
+    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    # Warp reads its determinism mode at module build time, so request it before the env exists.
+    request_determinism(args_cli, env_cfg)
+    agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
+    env_cfg.seed = agent_cfg["seed"]
+    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+
+    env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     pre_launch_video_config(env_cfg, args_cli=args_cli)
     with startup_screen(args_cli, num_stages=3) as screen:
         show_run_summary(screen, args_cli, env_cfg, library="sb3", action="play")
         screen.stage("Launching simulation")
         with launch_simulation(env_cfg, args_cli):
-            task_name = args_cli.task.split(":")[-1]
-            train_task_name = task_name.replace("-Play", "")
-            if args_cli.seed == -1:
-                args_cli.seed = random.randint(0, 10000)
-
-            env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-            # Warp reads its determinism mode at module build time, so request it before the env exists.
-            request_determinism(args_cli, env_cfg)
-            agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
-            env_cfg.seed = agent_cfg["seed"]
-            env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
             log_root_path = os.path.join("logs", "sb3", train_task_name)
             log_root_path = os.path.abspath(log_root_path)
             if args_cli.checkpoint == "pretrained":

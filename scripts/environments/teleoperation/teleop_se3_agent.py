@@ -31,6 +31,7 @@ from collections.abc import Callable
 from isaaclab.app import AppLauncher
 from isaaclab.utils.string import list_intersection, string_to_callable
 
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import setup_preset_cli
 
 # add argparse arguments
@@ -258,10 +259,11 @@ def main() -> None:  # noqa: C901
         None
     """
     # Resolve the task configuration through Hydra so CLI presets are applied.
-    env_cfg, _ = resolve_task_config(args_cli.task, "")
+    env_cfg, _ = resolve_task_config(args_cli.task, "", materialize=False)
     env_cfg.sim.device = args_cli.device
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.env_name = args_cli.task
+    env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     if not isinstance(env_cfg, ManagerBasedRLEnvCfg):
         raise ValueError(
             "Teleoperation is only supported for ManagerBasedRLEnv environments. "

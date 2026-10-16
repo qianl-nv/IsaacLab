@@ -52,6 +52,7 @@ with contextlib.suppress(ImportError):
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse skrl training arguments."""
+    from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
     from isaaclab_tasks.utils import setup_preset_cli
 
     parser = argparse.ArgumentParser(description="Train an RL agent with skrl.")
@@ -123,8 +124,27 @@ def _run(args_cli: argparse.Namespace) -> None:
 
     agent_cfg_entry_point = resolve_skrl_agent_cfg_entry_point(args_cli.agent, args_cli.algorithm)
     with startup_screen(args_cli, num_stages=3) as screen:
-        env_cfg, agent_cfg = resolve_task_config(args_cli.task, agent_cfg_entry_point)
+        env_cfg, agent_cfg = resolve_task_config(args_cli.task, agent_cfg_entry_point, materialize=False)
         algorithm = resolve_skrl_algorithm(agent_cfg, args_cli.algorithm)
+        apply_env_overrides(args_cli, env_cfg)
+        validate_distributed_device(args_cli)
+
+        if args_cli.distributed:
+            global_rank = _get_distributed_rank(args_cli)
+
+        if args_cli.max_iterations:
+            agent_cfg["trainer"]["timesteps"] = args_cli.max_iterations * agent_cfg["agent"]["rollouts"]
+        agent_cfg["trainer"]["close_environment_at_exit"] = False
+
+        if args_cli.seed == -1:
+            args_cli.seed = random.randint(0, 10000)
+
+        agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
+        if args_cli.distributed:
+            agent_cfg["seed"] = agent_cfg["seed"] + global_rank
+        env_cfg.seed = agent_cfg["seed"]
+
+        env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
         pre_launch_video_config(env_cfg, args_cli=args_cli)
         show_run_summary(screen, args_cli, env_cfg, library="skrl", action="train")
         screen.stage("Launching simulation")
@@ -133,24 +153,6 @@ def _run(args_cli: argparse.Namespace) -> None:
                 from skrl.utils.runner.torch import Runner
             elif args_cli.ml_framework.startswith("jax"):
                 from skrl.utils.runner.jax import Runner
-
-            apply_env_overrides(args_cli, env_cfg)
-            validate_distributed_device(args_cli)
-
-            if args_cli.distributed:
-                global_rank = _get_distributed_rank(args_cli)
-
-            if args_cli.max_iterations:
-                agent_cfg["trainer"]["timesteps"] = args_cli.max_iterations * agent_cfg["agent"]["rollouts"]
-            agent_cfg["trainer"]["close_environment_at_exit"] = False
-
-            if args_cli.seed == -1:
-                args_cli.seed = random.randint(0, 10000)
-
-            agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
-            if args_cli.distributed:
-                agent_cfg["seed"] = agent_cfg["seed"] + global_rank
-            env_cfg.seed = agent_cfg["seed"]
 
             log_root_path = os.path.abspath(os.path.join("logs", "skrl", agent_cfg["agent"]["experiment"]["directory"]))
             print(f"[INFO] Logging experiment in directory: {log_root_path}")

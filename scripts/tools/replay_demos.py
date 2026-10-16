@@ -19,6 +19,7 @@ import sys
 from isaaclab.app import AppLauncher
 from isaaclab.utils.string import list_intersection, string_to_callable
 
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import setup_preset_cli
 
 # add argparse arguments
@@ -285,9 +286,10 @@ def main():
             f"Got num_envs={num_envs}. Use --num_envs 1 or disable --reset_sim_buffer_each_episode."
         )
 
-    env_cfg, _ = resolve_task_config(env_name, "")
+    env_cfg, _ = resolve_task_config(env_name, "", materialize=False)
     env_cfg.sim.device = args_cli.device
     env_cfg.scene.num_envs = num_envs
+    env_cfg = materialize_env_cfg(env_name, env_cfg)
 
     # extract success checking function to invoke in the main loop
     success_term = None

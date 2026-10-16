@@ -249,15 +249,23 @@ def export_rl_games_agent(
 def run_export_with_hydra(args_cli: argparse.Namespace, hydra_args: list[str]) -> bool:
     """Resolve Hydra task configuration and export one RL-Games policy."""
 
+    from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
+
     original_argv = sys.argv
     sys.argv = [sys.argv[0]] + hydra_args
     exported = False
 
     try:
 
-        @hydra_task_config(args_cli.task, args_cli.agent)
+        @hydra_task_config(args_cli.task, args_cli.agent, materialize=False)
         def _main(env_cfg, agent_cfg) -> None:
             nonlocal exported
+            env_cfg.scene.num_envs = 1
+            env_cfg.seed = agent_cfg["params"]["seed"]
+            cli_device = getattr(args_cli, "device", None)
+            if cli_device is not None:
+                env_cfg.sim.device = cli_device
+            env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
             with launch_simulation(env_cfg, args_cli):
                 exported = export_rl_games_agent(args_cli, env_cfg, agent_cfg)
 

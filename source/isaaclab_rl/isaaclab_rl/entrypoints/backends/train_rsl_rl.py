@@ -73,6 +73,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse RSL-RL training arguments."""
     from isaaclab.utils.string import list_intersection, string_to_callable
 
+    from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
     from isaaclab_tasks.utils import setup_preset_cli
 
     parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
@@ -133,30 +134,31 @@ def _run(args_cli: argparse.Namespace) -> None:
     installed_version = _check_rsl_rl_version()
 
     with startup_screen(args_cli, num_stages=3) as screen:
-        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent)
+        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent, materialize=False)
+        agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
+        apply_env_overrides(args_cli, env_cfg)
+        agent_cfg.max_iterations = (
+            args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
+        )
+
+        agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, installed_version)
+
+        env_cfg.seed = agent_cfg.seed
+        validate_distributed_device(args_cli)
+
+        if args_cli.distributed:
+            global_rank = int(os.getenv("RANK", "0"))
+            agent_cfg.device = env_cfg.sim.device
+
+            seed = agent_cfg.seed + global_rank
+            env_cfg.seed = seed
+            agent_cfg.seed = seed
+
+        env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
         pre_launch_video_config(env_cfg, args_cli=args_cli)
         show_run_summary(screen, args_cli, env_cfg, library="rsl_rl", action="train")
         screen.stage("Launching simulation")
         with launch_simulation(env_cfg, args_cli):
-            agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
-            apply_env_overrides(args_cli, env_cfg)
-            agent_cfg.max_iterations = (
-                args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
-            )
-
-            agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, installed_version)
-
-            env_cfg.seed = agent_cfg.seed
-            validate_distributed_device(args_cli)
-
-            if args_cli.distributed:
-                global_rank = int(os.getenv("RANK", "0"))
-                agent_cfg.device = env_cfg.sim.device
-
-                seed = agent_cfg.seed + global_rank
-                env_cfg.seed = seed
-                agent_cfg.seed = seed
-
             log_root_path = os.path.abspath(os.path.join("logs", "rsl_rl", agent_cfg.experiment_name))
             print(f"[INFO] Logging experiment in directory: {log_root_path}")
             log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

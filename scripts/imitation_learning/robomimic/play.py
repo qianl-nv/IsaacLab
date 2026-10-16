@@ -24,7 +24,7 @@ import argparse
 
 from isaaclab.app import AppLauncher, scan
 
-from isaaclab_tasks.utils import resolve_task_config
+from isaaclab_tasks.utils import parse_env_cfg
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Evaluate robomimic policy for Isaac Lab environment.")
@@ -51,12 +51,18 @@ args_cli, hydra_overrides = parser.parse_known_args()
 # launch omniverse app
 # Only enable rendering for tasks that actually declare Kit camera sensors: this script also
 # plays policies trained on low-dimensional observations, which should not pay for the RTX
-# renderer. ``resolve_task_config`` is safe to call before Kit is launched, and ``scan`` is the
+# renderer. ``parse_env_cfg`` is safe to call before Kit is launched, and ``scan`` is the
 # same detection ``launch_simulation`` uses, so this matches how camera enabling is resolved
 # elsewhere now that the ``--enable_cameras`` flag is gone.
 # ``overrides`` must be passed explicitly: this script keeps its own flags in ``sys.argv`` rather
 # than stripping them, so letting Hydra fall back to reading ``sys.argv`` makes it reject them.
-env_cfg_for_scan, _ = resolve_task_config(args_cli.task, "", overrides=hydra_overrides)
+env_cfg_for_scan = parse_env_cfg(
+    args_cli.task,
+    device=args_cli.device,
+    num_envs=1,
+    use_fabric=not args_cli.disable_fabric,
+    overrides=hydra_overrides,
+)
 app_launcher = AppLauncher(args_cli, enable_cameras=scan(env_cfg_for_scan, args_cli).has_kit_camera)
 simulation_app = app_launcher.app
 
@@ -71,7 +77,6 @@ import robomimic.utils.file_utils as FileUtils
 import robomimic.utils.torch_utils as TorchUtils
 import torch
 
-from isaaclab_tasks.utils import parse_env_cfg
 
 
 def rollout(policy, env, success_term, horizon, device):
@@ -142,13 +147,7 @@ def rollout(policy, env, success_term, horizon, device):
 def main():
     """Run a trained policy from robomimic with Isaac Lab environment."""
     # parse configuration
-    env_cfg = parse_env_cfg(
-        args_cli.task,
-        device=args_cli.device,
-        num_envs=1,
-        use_fabric=not args_cli.disable_fabric,
-        overrides=hydra_overrides,
-    )
+    env_cfg = env_cfg_for_scan
 
     # Set observations to dictionary mode for Robomimic
     env_cfg.observations.policy.concatenate_terms = False

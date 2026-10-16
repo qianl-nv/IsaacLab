@@ -45,6 +45,7 @@ from isaaclab_rl.utils.pretrained_checkpoint import (
 )
 
 import isaaclab_tasks  # noqa: F401
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import (
     get_checkpoint_path,
     resolve_task_config,
@@ -141,9 +142,30 @@ def main():
 def _main():
     """Execute SKRL playback."""
     env_cfg, experiment_cfg = resolve_task_config(
-        args_cli.task, agent_cfg_entry_point, play_mode=not args_cli.train_env_cfg
+        args_cli.task, agent_cfg_entry_point, play_mode=not args_cli.train_env_cfg, materialize=False
     )
     algorithm = resolve_skrl_algorithm(experiment_cfg, args_cli.algorithm)
+    from isaaclab_rl.skrl import SkrlVecEnvWrapper
+
+    task_name = args_cli.task.split(":")[-1]
+    train_task_name = task_name.replace("-Play", "")
+
+    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    # Warp reads its determinism mode at module build time, so request it before the env exists.
+    request_determinism(args_cli, env_cfg)
+    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+
+    # configure the ML framework into the global skrl variable
+    if args_cli.ml_framework.startswith("jax"):
+        skrl.config.jax.backend = "jax" if args_cli.ml_framework == "jax" else "numpy"
+
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)
+
+    experiment_cfg["seed"] = args_cli.seed if args_cli.seed is not None else experiment_cfg["seed"]
+    env_cfg.seed = experiment_cfg["seed"]
+
+    env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     pre_launch_video_config(env_cfg, args_cli=args_cli)
     with startup_screen(args_cli, num_stages=3) as screen:
         show_run_summary(screen, args_cli, env_cfg, library="skrl", action="play")
@@ -153,26 +175,6 @@ def _main():
                 from skrl.utils.runner.torch import Runner
             elif args_cli.ml_framework.startswith("jax"):
                 from skrl.utils.runner.jax import Runner
-
-            from isaaclab_rl.skrl import SkrlVecEnvWrapper
-
-            task_name = args_cli.task.split(":")[-1]
-            train_task_name = task_name.replace("-Play", "")
-
-            env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-            # Warp reads its determinism mode at module build time, so request it before the env exists.
-            request_determinism(args_cli, env_cfg)
-            env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
-            # configure the ML framework into the global skrl variable
-            if args_cli.ml_framework.startswith("jax"):
-                skrl.config.jax.backend = "jax" if args_cli.ml_framework == "jax" else "numpy"
-
-            if args_cli.seed == -1:
-                args_cli.seed = random.randint(0, 10000)
-
-            experiment_cfg["seed"] = args_cli.seed if args_cli.seed is not None else experiment_cfg["seed"]
-            env_cfg.seed = experiment_cfg["seed"]
 
             log_root_path = os.path.join("logs", "skrl", experiment_cfg["agent"]["experiment"]["directory"])
             log_root_path = os.path.abspath(log_root_path)

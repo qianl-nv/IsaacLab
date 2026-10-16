@@ -26,6 +26,7 @@ from isaaclab.utils import math as math_utils
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import (
+    materialize_env_cfg,
     resolve_task_config,
     setup_preset_cli,
 )
@@ -62,7 +63,7 @@ def run(argv: list[str] | None = None, *, policy: PolicyName) -> None:
     torch.manual_seed(_SEED)
 
     # parse configuration via Hydra (supports preset selection, e.g. env.sim.physics=newton_mjwarp)
-    env_cfg, _ = resolve_task_config(args_cli.task, "")
+    env_cfg, _ = resolve_task_config(args_cli.task, "", materialize=False)
 
     # override with CLI arguments and reject unsupported configurations before
     # launching Kit or initializing a native physics backend.
@@ -73,6 +74,7 @@ def run(argv: list[str] | None = None, *, policy: PolicyName) -> None:
     args_cli.device = env_cfg.sim.device
     if args_cli.disable_fabric:
         env_cfg.sim.use_fabric = False
+    env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     try:
         env_cfg.validate()
     except (TypeError, ValueError) as exc:

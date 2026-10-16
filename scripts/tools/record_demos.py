@@ -47,6 +47,7 @@ from typing import TYPE_CHECKING
 from isaaclab.app import AppLauncher
 from isaaclab.utils.string import list_intersection, string_to_callable
 
+from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 from isaaclab_tasks.utils import setup_preset_cli
 
 if TYPE_CHECKING:
@@ -336,10 +337,11 @@ def create_environment_config(
     """
     # Resolve the task configuration through Hydra so CLI presets are applied.
     try:
-        env_cfg, _ = resolve_task_config(args_cli.task, "")
+        env_cfg, _ = resolve_task_config(args_cli.task, "", materialize=False)
         env_cfg.sim.device = args_cli.device
         env_cfg.scene.num_envs = 1
         env_cfg.env_name = args_cli.task.split(":")[-1]
+        env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
     except Exception as e:
         logger.error(f"Failed to parse environment configuration: {e}")
         exit(1)
@@ -385,7 +387,9 @@ def create_environment_config(
     env_cfg.observations.policy.concatenate_terms = False
 
     demo_recorder_cfg_entry_point = gym.spec(args_cli.task.split(":")[-1]).kwargs.get("demo_recorder_cfg_entry_point")
-    if demo_recorder_cfg_entry_point is None:
+    if getattr(env_cfg, "demo_recorder_config", None) is not None:
+        env_cfg.recorders = env_cfg.demo_recorder_config
+    elif demo_recorder_cfg_entry_point is None:
         env_cfg.recorders = ActionStateRecorderManagerCfg()
     else:
         env_cfg.recorders = load_cfg_from_registry(args_cli.task, "demo_recorder_cfg_entry_point")

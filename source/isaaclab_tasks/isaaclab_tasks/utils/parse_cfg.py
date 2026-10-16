@@ -7,16 +7,17 @@
 
 from __future__ import annotations
 
-import gymnasium as gym
 import importlib
 import importlib.util
 import inspect
 import os
 import re
 import warnings
-import yaml
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
+
+import gymnasium as gym
+import yaml
 
 from isaaclab_tasks.utils.hydra import _user_stacklevel, resolve_task_config
 
@@ -40,8 +41,15 @@ def load_env_cfg_materializer(task_name: str) -> Callable[[object], object] | No
     if callable(entry_point):
         return entry_point
     if isinstance(entry_point, str):
-        mod_name, attr_name = entry_point.split(":")
-        return getattr(importlib.import_module(mod_name), attr_name)
+        try:
+            mod_name, attr_name = entry_point.rsplit(":", 1)
+        except ValueError as exc:
+            raise TypeError(
+                f"Task '{task_name}' has an invalid env_cfg_materializer_entry_point: {entry_point!r}."
+            ) from exc
+        materializer = getattr(importlib.import_module(mod_name), attr_name)
+        if callable(materializer):
+            return materializer
     raise TypeError(f"Task '{task_name}' has an invalid env_cfg_materializer_entry_point: {entry_point!r}.")
 
 

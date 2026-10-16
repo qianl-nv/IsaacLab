@@ -104,6 +104,31 @@ configuration is loaded using the :meth:`isaaclab_tasks.utils.parse_env_cfg` fun
 It is then passed to the :meth:`gymnasium.make` function to create the environment instance.
 The configuration entry point can be both a YAML file or a python configuration class.
 
+Some tasks construct their final scene and manager terms dynamically after configuration overrides
+have been applied. These tasks may additionally register an ``env_cfg_materializer_entry_point``:
+
+.. code-block:: python
+
+   gym.register(
+       id="My-Dynamic-Task-v0",
+       entry_point="isaaclab.envs:ManagerBasedRLEnv",
+       kwargs={
+           "env_cfg_entry_point": "my_package.task:SourceEnvCfg",
+           "env_cfg_materializer_entry_point": "my_package.task:materialize_env_cfg",
+       },
+   )
+
+The materializer accepts the source configuration and returns the completed environment
+configuration. :meth:`isaaclab_tasks.utils.parse_env_cfg` applies Hydra, CLI, and programmatic
+overrides before invoking the materializer, and invokes it at most once. Workflows that must apply
+additional native arguments can defer this step and materialize explicitly:
+
+.. code-block:: python
+
+   env_cfg, agent_cfg = resolve_task_config(task_name, agent_entry, materialize=False)
+   apply_native_overrides(env_cfg)
+   env_cfg = materialize_env_cfg(task_name, env_cfg)
+
 Direct Environments
 ^^^^^^^^^^^^^^^^^^^
 

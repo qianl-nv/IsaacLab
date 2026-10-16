@@ -6,10 +6,24 @@
 """Tests for :func:`isaaclab_tasks.utils.parse_cfg.parse_env_cfg`."""
 
 import gymnasium as gym
+import pytest
 
 import isaaclab_tasks  # noqa: F401
-import pytest
-from isaaclab_tasks.utils import materialize_env_cfg, parse_env_cfg
+from isaaclab_tasks.utils import materialize_env_cfg, parse_env_cfg, resolve_task_config
+
+
+class _SourceCfg:
+    def __init__(self, value: int):
+        self.value = value
+
+
+class _MaterializedCfg:
+    def __init__(self, value: int):
+        self.value = value
+
+
+def _replace_source_cfg(source_cfg: _SourceCfg) -> _MaterializedCfg:
+    return _MaterializedCfg(source_cfg.value)
 
 
 def test_parse_env_cfg_rejects_bare_string_overrides():
@@ -64,6 +78,51 @@ def test_parse_env_cfg_materializes_after_explicit_overrides():
         assert env_cfg.decimation == 17
         assert materialize_env_cfg(task_name, env_cfg) is env_cfg
         assert observed_num_envs == [7]
+    finally:
+        del gym.registry[task_name]
+
+
+def test_materialize_env_cfg_loads_import_string_and_accepts_replacement():
+    """A materializer may be an import string and return a replacement configuration."""
+    task_name = "Isaac-Test-Env-Cfg-Import-String-Materializer"
+    gym.register(
+        id=task_name,
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        kwargs={"env_cfg_materializer_entry_point": f"{__name__}:_replace_source_cfg"},
+    )
+    try:
+        source_cfg = _SourceCfg(23)
+        materialized_cfg = materialize_env_cfg(task_name, source_cfg)
+
+        assert isinstance(materialized_cfg, _MaterializedCfg)
+        assert materialized_cfg.value == 23
+        assert materialized_cfg._isaaclab_materialized is True
+        assert materialize_env_cfg(task_name, materialized_cfg) is materialized_cfg
+    finally:
+        del gym.registry[task_name]
+
+
+def test_resolve_task_config_tracks_explicit_source_overrides_before_materialization():
+    """Deferred materialization retains explicit intent, including values equal to defaults."""
+    task_name = "Isaac-Test-Env-Cfg-Explicit-Overrides"
+    source_cfg = parse_env_cfg("Isaac-Cartpole")
+    default_decimation = source_cfg.decimation
+    gym.register(
+        id=task_name,
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        kwargs={"env_cfg_entry_point": source_cfg},
+    )
+    try:
+        resolved_cfg, _ = resolve_task_config(
+            task_name,
+            None,
+            overrides=[f"env.decimation={default_decimation}"],
+            materialize=False,
+        )
+
+        assert resolved_cfg.decimation == default_decimation
+        assert resolved_cfg.__isaaclab_explicit_overrides__ == ("decimation",)
+        assert not hasattr(resolved_cfg, "_isaaclab_materialized")
     finally:
         del gym.registry[task_name]
 

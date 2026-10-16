@@ -60,6 +60,7 @@ def _cleanup_pbar(*args):
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse Stable-Baselines3 training arguments."""
+    from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
     from isaaclab_tasks.utils import setup_preset_cli
 
     parser = argparse.ArgumentParser(description="Train an RL agent with Stable-Baselines3.")
@@ -103,21 +104,22 @@ def run(argv: list[str]) -> None:
 
     args_cli = _parse_args(argv)
     with startup_screen(args_cli, num_stages=3) as screen:
-        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent)
+        env_cfg, agent_cfg = resolve_task_config(args_cli.task, args_cli.agent, materialize=False)
+        if args_cli.seed == -1:
+            args_cli.seed = random.randint(0, 10000)
+
+        apply_env_overrides(args_cli, env_cfg)
+        agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
+        if args_cli.max_iterations is not None:
+            agent_cfg["n_timesteps"] = args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
+
+        env_cfg.seed = agent_cfg["seed"]
+
+        env_cfg = materialize_env_cfg(args_cli.task, env_cfg)
         pre_launch_video_config(env_cfg, args_cli=args_cli)
         show_run_summary(screen, args_cli, env_cfg, library="sb3", action="train")
         screen.stage("Launching simulation")
         with launch_simulation(env_cfg, args_cli):
-            if args_cli.seed == -1:
-                args_cli.seed = random.randint(0, 10000)
-
-            apply_env_overrides(args_cli, env_cfg)
-            agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
-            if args_cli.max_iterations is not None:
-                agent_cfg["n_timesteps"] = args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
-
-            env_cfg.seed = agent_cfg["seed"]
-
             run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             log_root_path = os.path.abspath(os.path.join("logs", "sb3", args_cli.task))
             print(f"[INFO] Logging experiment in directory: {log_root_path}")

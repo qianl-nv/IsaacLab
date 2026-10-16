@@ -35,9 +35,10 @@ from collections.abc import Callable, Mapping, Sequence
 
 import hydra
 from hydra.core.config_store import ConfigStore
+from omegaconf import OmegaConf
+
 from isaaclab.envs.utils.spaces import replace_env_cfg_spaces_with_strings, replace_strings_with_env_cfg_spaces
 from isaaclab.utils import configclass, replace_slices_with_strings, replace_strings_with_slices
-from omegaconf import OmegaConf
 
 from .preset_target import PresetTarget
 
@@ -502,7 +503,9 @@ def resolve_task_config(
     return resolved["env_cfg"], resolved["agent_cfg"]
 
 
-def hydra_task_config(task_name: str, agent_cfg_entry_point: str, play_mode: bool = False) -> Callable:
+def hydra_task_config(
+    task_name: str, agent_cfg_entry_point: str, play_mode: bool = False, materialize: bool = True
+) -> Callable:
     """Decorator for Hydra config with REPLACE-only preset semantics.
 
     Args:
@@ -510,6 +513,8 @@ def hydra_task_config(task_name: str, agent_cfg_entry_point: str, play_mode: boo
         agent_cfg_entry_point: Agent config entry point key
         play_mode: Whether to apply the play-mode overrides defined by the environment
             configuration's ``play_mode`` method after loading. Defaults to False.
+        materialize: Whether to materialize before calling the decorated function. Set
+            False when the caller must apply native CLI overrides first.
 
     Returns:
         Decorated function receiving ``(env_cfg, agent_cfg, *args, **kwargs)``
@@ -524,7 +529,9 @@ def hydra_task_config(task_name: str, agent_cfg_entry_point: str, play_mode: boo
             def invoke(env_cfg, agent_cfg):
                 from isaaclab_tasks.utils.parse_cfg import materialize_env_cfg
 
-                func(materialize_env_cfg(task, env_cfg), agent_cfg, *args, **kwargs)
+                if materialize:
+                    env_cfg = materialize_env_cfg(task, env_cfg)
+                func(env_cfg, agent_cfg, *args, **kwargs)
 
             _run_hydra(task, env_cfg, agent_cfg, hydra_args, invoke)
 
@@ -710,6 +717,12 @@ def register_task(
         env_cfg.play_mode()
 
     cfgs = {"env": env_cfg, "agent": agent_cfg}
+    # Preserve explicit intent even when an override equals a source default.
+    # Dunder metadata is excluded from configclass/Hydra serialization.
+    if not isinstance(env_cfg, dict):
+        env_cfg.__isaaclab_explicit_overrides__ = tuple(
+            key.lstrip("+")[4:] for key, _, _ in override_items if key.lstrip("+").startswith("env.")
+        )
     for key, val, arg in override_items:
         if key in consumed_explicit:
             continue
@@ -805,7 +818,9 @@ def apply_overrides(
         hydra_cfg[sec] = (
             cfgs[sec].to_dict()
             if hasattr(cfgs[sec], "to_dict")
-            else dict(cfgs[sec]) if isinstance(cfgs[sec], Mapping) else cfgs[sec]
+            else dict(cfgs[sec])
+            if isinstance(cfgs[sec], Mapping)
+            else cfgs[sec]
         )
 
     _apply_preset_scalars(cfgs, hydra_cfg, preset_scalar)
