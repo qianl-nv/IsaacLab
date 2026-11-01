@@ -1,0 +1,76 @@
+Loading user config located at: '/home/qianl/IsaacLab/.venv/lib/python3.12/site-packages/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-10-30T09:41:34Z [Info] [carb] Logging to file: /home/qianl/IsaacLab/.venv/lib/python3.12/site-packages/isaacsim/kit/logs/Kit/IsaacLab/3.0/kit_20261030_024134.log
+2026-10-30T09:41:34Z [5ms] [Warning] [omni.ext.plugin] [ext: isaaclab_mimic] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_mimic' or '/home/qianl/IsaacLab/source/isaaclab_mimic/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_ov] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_ov' or '/home/qianl/IsaacLab/source/isaaclab_ov/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_tasks_experimental] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_tasks_experimental' or '/home/qianl/IsaacLab/source/isaaclab_tasks_experimental/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_teleop] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_teleop' or '/home/qianl/IsaacLab/source/isaaclab_teleop/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab' or '/home/qianl/IsaacLab/source/isaaclab/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_assets] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_assets' or '/home/qianl/IsaacLab/source/isaaclab_assets/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_newton] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_newton' or '/home/qianl/IsaacLab/source/isaaclab_newton/config'
+2026-10-30T09:41:34Z [6ms] [Warning] [omni.ext.plugin] [ext: isaaclab_physx] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_physx' or '/home/qianl/IsaacLab/source/isaaclab_physx/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_visualizers' or '/home/qianl/IsaacLab/source/isaaclab_visualizers/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_contrib] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_contrib' or '/home/qianl/IsaacLab/source/isaaclab_contrib/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_tasks] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_tasks' or '/home/qianl/IsaacLab/source/isaaclab_tasks/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_ppisp] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_ppisp' or '/home/qianl/IsaacLab/source/isaaclab_ppisp/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_rl] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_rl' or '/home/qianl/IsaacLab/source/isaaclab_rl/config'
+2026-10-30T09:41:34Z [7ms] [Warning] [omni.ext.plugin] [ext: isaaclab_experimental] Extensions config 'extension.toml' doesn't exist '/home/qianl/IsaacLab/source/isaaclab_experimental' or '/home/qianl/IsaacLab/source/isaaclab_experimental/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1793353294.945533 1340694 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1793353294.945575 1340694 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 595.84        | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 3090          | Yes: 0 |     | 24576   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2204      | c87c665b.. |
+|     |                                  |        |     |            | 61        |            |
+|=============================================================================================|
+| OS: 24.04.4 LTS (Noble Numbat) ubuntu, Version: 24.04.4, Kernel: 7.0.0-30-generic
+| XServer Vendor: The X.Org Foundation, XServer Version: 12101011 (1.21.1.11)
+| Processor: AMD Ryzen Threadripper PRO 3955WX 16-Cores
+| Cores: 16 | Logical Cores: 32
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 64135 | Free Memory: 34760
+| Total Page/Swap (MB): 31743 | Free Page/Swap: 19631
+|---------------------------------------------------------------------------------------------|
+2026-10-30T09:41:36Z [1,453ms] [Warning] [omni.rtx] CPU performance profile is set to powersave. This profile sets the CPU to the lowest frequency reducing performance.
+2026-10-30T09:41:37Z [2,376ms] [Warning] [omni.log] Source: omni.hydra was already registered.
+Warning: Possible version incompatibility. Attempting to load carb::ujitso::IFactory with version v0.3 against v0.2.
+2026-10-30T09:41:37Z [2,857ms] [Warning] [pxr.Semantics] pxr.Semantics is deprecated - please use Semantics instead
+2026-10-30T09:41:37Z [2,971ms] [Warning] [omni.replicator.core.scripts.extension] No material configuration file, adding configuration to material settings directly.
+2026-10-30T09:41:39Z [4,969ms] [Warning] [rtx.hydra] RenderDelegate : Warning /rtx/hydra/readTransformsFromFabricInRenderDelegate and geometry streaming are enabled together but this can cause issues with dynamic objects not streaming correctly due to problems in the transform update.
+[ISAACLAB] KitLauncher initialization complete
+2026-10-30T09:41:44Z [9,284ms] [Warning] [isaaclab.utils.assets] Serving remote assets from the local cache under '/tmp'. Each copy is checked against the server before use; delete the directory to force a full re-download.
+[INFO]: Loading local copy of remote asset 'https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/default_ground_plane.usda' from '/tmp/https/omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/default_ground_plane.usda'.
+[INFO]: Loading local copy of remote asset 'https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/Materials/Textures/default_ground_plane_albedo.png' from '/tmp/https/omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/Materials/Textures/default_ground_plane_albedo.png'.
+[INFO]: Loading local copy of remote asset 'https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/Materials/Textures/default_ground_plane_roughness.png' from '/tmp/https/omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Environments/Grid/default_ground_plane_checker_v1/Materials/Textures/default_ground_plane_roughness.png'.
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RigidObject.
+2026-10-30T09:41:46Z [11,824ms] [Warning] [omni.fabric.plugin] Warning: attribute material:binding not found for path /World/Toolbox/Case/Geometry/Socket_18_mm/Body
+
+2026-10-30T09:41:46Z [11,834ms] [Warning] [omni.fabric.plugin] Unsupported type encountered during VtValue extraction
+2026-10-30T09:41:46Z [11,834ms] [Warning] [omni.fabric.plugin] Attempting to set an invalid data source to array attribute
+
+[INFO]: Simulation parameters for joints in /World/Workbench/Bench:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                         Simulation Joint Information (Prim path: /World/Workbench/Bench)                                                        |
++-------+----------------------------+-----------+---------+----------+-----------------+------------------+------------------+-----------------+-----------------+---------------+
+| Index | Name                       | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction | Position Limits | Velocity Limits | Effort Limits |
++-------+----------------------------+-----------+---------+----------+-----------------+------------------+------------------+-----------------+-----------------+---------------+
+|   0   | joint_drawersB_01_joint_00 |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       |  [0.000, 0.252] |     3.4e+38     |    100.000    |
+|   1   | joint_drawersC_01_joint_00 |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       |  [0.000, 0.252] |     3.4e+38     |    100.000    |
+|   2   | joint_drawersA_01_joint_00 |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       |  [0.000, 0.252] |     3.4e+38     |    100.000    |
+|   3   | joint_drawersD_01_joint_00 |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       |  [0.000, 0.252] |     3.4e+38     |    100.000    |
+|   4   | joint_door_01_joint_00     |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       |  [0.000, 1.571] |     5.9e+36     |    100.000    |
++-------+----------------------------+-----------+---------+----------+-----------------+------------------+------------------+-----------------+-----------------+---------------+
+2026-10-30T09:41:47Z [12,248ms] [Warning] [omni.fabric.plugin] Warning: attribute timeVaryingAttributes not found for bucket id 18
+
+SCENE_READY {'simulation_time_s': 0.0, 'drawer_q_m': 0.0, 'drawer_speed_m_s': 0.0, 'inside': [False, False, False, False, False], 'tool_speeds_m_s': [0.0, 0.0, 0.0, 0.0, 0.0], 'opened': False, 'placed_one_by_one': [], 'invalid_sequence': False, 'success': False, 'tool_world_bottoms_m': [0.6787446141242981, 0.6838105320930481, 0.6837882399559021, 0.6837297677993774, 0.7337015867233276]}
+2026-10-30T09:42:00Z [25,381ms] [Warning] [omni.replicator.core.scripts.annotators] omni.hydra.engine.stats is not installed, assuming single GPU
+2026-10-30T09:42:00Z [25,483ms] [Warning] [omni.syntheticdata.plugin] OgnSdPostRenderVarToHost : rendervar copy from texture directly to host buffer is counter-performant. Please use copy from texture to device buffer first.
+STABILITY_PASS {"passed": true, "physics": "Isaac Sim PhysX", "settle_s": 4, "observe_s": 6, "tool_drift_m": {"slotted_screwdriver": 0.0, "torx_screwdriver": 1.666000493116826e-08, "phillips_screwdriver": 0.0, "combination_wrench": 1.1926748477719684e-08, "small_wrench": 1.053671194739536e-08}, "peak_observed_speed_m_s": 0.000484065298223868, "simulation_time_s": 10.0, "drawer_q_m": 0.0, "drawer_speed_m_s": 0.0, "inside": [false, false, false, false, false], "tool_speeds_m_s": [0.00033002247801050544, 0.00020570708147715777, 0.00029408425325527787, 0.00038912074523977935, 0.00048341264482587576], "opened": false, "placed_one_by_one": [], "invalid_sequence": false, "success": false, "tool_world_bottoms_m": [0.6674579381942749, 0.6678206920623779, 0.6674208641052246, 0.6687591671943665, 0.6769872307777405], "wall_time_s": 26.81562113761902}
+[INFO]: SimulationContext cleared

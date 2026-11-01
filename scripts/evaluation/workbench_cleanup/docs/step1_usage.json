@@ -1,0 +1,38 @@
+{
+  "start_utc": "2026-10-30T09:19:07.877Z",
+  "end_utc": "2026-10-30T09:42:03.000Z",
+  "wall_time_s": 1375.123,
+  "inference_calls": 48,
+  "tokens": {
+    "input_tokens": 7053977,
+    "cached_input_tokens": 6930688,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 37709,
+    "reasoning_output_tokens": 12678,
+    "total_tokens": 7091686
+  },
+  "orchestration_tool_calls": {
+    "exec": 44,
+    "wait": 4
+  },
+  "nested_tool_calls_by_type": {
+    "exec_command": 55,
+    "view_image": 4,
+    "apply_patch": 11,
+    "write_stdin": 6
+  },
+  "accounting_notes": [
+    "Inference calls are unique response_id values in token_usage_record events.",
+    "Token counts include cached input; total_tokens includes reasoning inside output_tokens.",
+    "Nested tool counts are dispatch sites in submitted exec source; this task uses no tool-call loops.",
+    "Wall time includes tool execution, model inference, retries, and approval waits.",
+    "The snapshot excludes subsequent reporting calls and the final chat response."
+  ],
+  "step": 1,
+  "loc": {
+    "production": 472,
+    "retained_debug": 75,
+    "scratch_debug": 49,
+    "total_debug": 124
+  }
+}

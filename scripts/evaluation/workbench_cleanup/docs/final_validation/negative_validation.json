@@ -1,0 +1,116 @@
+[
+  {
+    "scenario": "one_tool_missing",
+    "ever_success": false,
+    "final": {
+      "simulation_time_s": 2.0,
+      "drawer_q_m": 3.36416380863902e-11,
+      "drawer_speed_m_s": 1.3192246228754811e-07,
+      "inside": [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "tool_speeds_m_s": [
+        0.0003206733090337366,
+        0.00016207320732064545,
+        0.0002906803856603801,
+        0.00038447094266302884,
+        0.00029598496621474624
+      ],
+      "opened": true,
+      "placed_one_by_one": [
+        "slotted_screwdriver",
+        "torx_screwdriver",
+        "phillips_screwdriver",
+        "combination_wrench",
+        "small_wrench"
+      ],
+      "invalid_sequence": false,
+      "success": false,
+      "tool_world_bottoms_m": [
+        0.5140259861946106,
+        0.5143888592720032,
+        0.5139889717102051,
+        0.5153189301490784,
+        0.6688197255134583
+      ]
+    }
+  },
+  {
+    "scenario": "drawer_left_open",
+    "ever_success": false,
+    "final": {
+      "simulation_time_s": 2.0,
+      "drawer_q_m": 0.2449905127286911,
+      "drawer_speed_m_s": 2.0044579287059605e-05,
+      "inside": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "tool_speeds_m_s": [
+        0.000350895628798753,
+        0.0001519395736977458,
+        0.00028463572380132973,
+        0.0004256729152984917,
+        0.0004618403618223965
+      ],
+      "opened": true,
+      "placed_one_by_one": [
+        "slotted_screwdriver",
+        "torx_screwdriver",
+        "phillips_screwdriver",
+        "combination_wrench",
+        "small_wrench"
+      ],
+      "invalid_sequence": false,
+      "success": false,
+      "tool_world_bottoms_m": [
+        0.5140259861946106,
+        0.5143888592720032,
+        0.5139889717102051,
+        0.5153189301490784,
+        0.5153815150260925
+      ]
+    }
+  },
+  {
+    "scenario": "preloaded_without_history",
+    "ever_success": false,
+    "final": {
+      "simulation_time_s": 2.0,
+      "drawer_q_m": -7.419697495292255e-11,
+      "drawer_speed_m_s": 3.5762067795985786e-07,
+      "inside": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "tool_speeds_m_s": [
+        0.0003475294797681272,
+        0.0001529074797872454,
+        0.00029463422833941877,
+        0.0004008016549050808,
+        0.000464922544779256
+      ],
+      "opened": false,
+      "placed_one_by_one": [],
+      "invalid_sequence": false,
+      "success": false,
+      "tool_world_bottoms_m": [
+        0.5140259861946106,
+        0.5143888592720032,
+        0.5139889717102051,
+        0.5153188705444336,
+        0.5153814554214478
+      ]
+    }
+  }
+]

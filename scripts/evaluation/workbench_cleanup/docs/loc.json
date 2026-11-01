@@ -1,0 +1,27 @@
+{
+  "files": {
+    "environment.py": 160,
+    "accounting.py": 75,
+    "run.py": 101,
+    "test_success.py": 124,
+    "demo.py": 279,
+    "success.py": 96,
+    "scene.py": 211
+  },
+  "negative_fixture_loc": 40,
+  "per_step": [
+    {
+      "production": 472,
+      "retained_debug": 75,
+      "scratch_debug": 49,
+      "total_debug": 124
+    },
+    {
+      "production": 335,
+      "retained_debug": 164,
+      "scratch_debug": 78,
+      "total_debug": 242
+    }
+  ],
+  "definition": "Physical Python lines including comments and blank lines; exclude USD, JSON, logs, images, video and README prose."
+}

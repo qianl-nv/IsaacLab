@@ -1,0 +1,23 @@
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+check for broken symlinks............................(no files to check)Skipped
+detect destroyed symlinks................................................Passed
+check for added large files..............................................Passed
+check yaml...........................................(no files to check)Skipped
+check for merge conflicts................................................Passed
+check for case conflicts.................................................Passed
+check that executables have shebangs.................(no files to check)Skipped
+check toml...........................................(no files to check)Skipped
+fix end of files.........................................................Passed
+check that scripts with shebangs are executable..........................Passed
+detect private key.......................................................Passed
+debug statements (python)................................................Passed
+codespell................................................................Passed
+Insert license in comments...............................................Passed
+Insert license in comments...........................(no files to check)Skipped
+rst ``code`` is two backticks........................(no files to check)Skipped
+rst directives end with two colons...................(no files to check)Skipped
+rst ``inline code`` next to normal text..............(no files to check)Skipped
+check changelog fragments................................................Passed
+check Git LFS pointers...................................................Passed

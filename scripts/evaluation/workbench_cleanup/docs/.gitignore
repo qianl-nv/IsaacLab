@@ -1,0 +1,3 @@
+# Keep the validation logs and composed scene linked from this archived report.
+!*.log
+!*.usda

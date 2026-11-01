@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "physics": "Isaac Sim PhysX",
+  "settle_s": 4,
+  "observe_s": 6,
+  "tool_drift_m": {
+    "slotted_screwdriver": 0.0,
+    "torx_screwdriver": 1.666000493116826e-08,
+    "phillips_screwdriver": 0.0,
+    "combination_wrench": 1.1926748477719684e-08,
+    "small_wrench": 1.053671194739536e-08
+  },
+  "peak_observed_speed_m_s": 0.000484065298223868,
+  "simulation_time_s": 10.0,
+  "drawer_q_m": 0.0,
+  "drawer_speed_m_s": 0.0,
+  "inside": [
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "tool_speeds_m_s": [
+    0.00033002247801050544,
+    0.00020570708147715777,
+    0.00029408425325527787,
+    0.00038912074523977935,
+    0.00048341264482587576
+  ],
+  "opened": false,
+  "placed_one_by_one": [],
+  "invalid_sequence": false,
+  "success": false,
+  "tool_world_bottoms_m": [
+    0.6674579381942749,
+    0.6678206920623779,
+    0.6674208641052246,
+    0.6687591671943665,
+    0.6769872307777405
+  ],
+  "wall_time_s": 26.81562113761902
+}
