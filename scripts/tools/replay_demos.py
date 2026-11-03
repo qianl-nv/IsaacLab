@@ -14,9 +14,10 @@ import argparse
 import sys
 
 from isaaclab.app import add_launcher_args, launch_simulation
-from isaaclab.utils.string import list_intersection, string_to_callable
+from isaaclab.utils.string import list_intersection
 
 from isaaclab_tasks.utils import setup_preset_cli
+from isaaclab_tasks.utils.task_registration import run_task_registration_callback
 
 parser = argparse.ArgumentParser(description="Replay demonstrations in Isaac Lab environments.")
 parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to replay episodes.")
@@ -60,11 +61,8 @@ args_cli, hydra_args = setup_preset_cli(parser)
 # the pause/resume keyboard is a Kit input device, so the Kit runtime is required
 args_cli.require_kit = True
 
-# Call an external callback if requested.
-remaining_args_env_registration = None
-if args_cli.external_callback:
-    external_callback_function = string_to_callable(args_cli.external_callback, separator=".")
-    remaining_args_env_registration = external_callback_function()
+# Complete downstream task registration before resolving its environment config.
+remaining_args_env_registration = run_task_registration_callback(sys.argv[1:])
 
 # Hand arguments consumed by neither this parser nor the callback over to Hydra.
 hydra_args = list_intersection(hydra_args, remaining_args_env_registration)

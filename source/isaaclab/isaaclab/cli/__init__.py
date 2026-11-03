@@ -37,6 +37,7 @@ from .utils import (
 )
 
 _TASK_ENTRY_POINT_GROUP = "isaaclab.tasks"
+_CLI_ENTRY_POINT_GROUP = "isaaclab.cli"
 
 
 def _exit_on_error(status: int) -> None:
@@ -53,6 +54,26 @@ def load_external_tasks() -> None:
     """
     for entry_point in importlib.metadata.entry_points(group=_TASK_ENTRY_POINT_GROUP):
         entry_point.load()
+
+
+def _external_commands(builtin_commands: set[str]) -> dict[str, importlib.metadata.EntryPoint]:
+    """Discover external CLI commands without importing their implementation modules."""
+    commands = {}
+    for entry_point in importlib.metadata.entry_points(group=_CLI_ENTRY_POINT_GROUP):
+        if entry_point.name in builtin_commands:
+            raise RuntimeError(
+                f"External Isaac Lab command {entry_point.name!r} conflicts with a built-in command of the same name."
+            )
+        if entry_point.name in commands:
+            raise RuntimeError(f"Multiple external Isaac Lab commands are registered as {entry_point.name!r}.")
+        commands[entry_point.name] = entry_point
+    return commands
+
+
+def _run_external_command(entry_point: importlib.metadata.EntryPoint, args: list[str]) -> None:
+    """Load one external command and forward its command-line arguments."""
+    status = entry_point.load()(args)
+    _exit_on_error(0 if status is None else status)
 
 
 def train(args: list[str] | None = None) -> None:
@@ -192,9 +213,12 @@ def cli() -> None:
         "zero_agent": zero_agent,
         "random_agent": random_agent,
     }
+    dedicated_commands = {"list_envs", "demo", "example", "teleop"}
+    builtin_commands = {*subcommands, *dedicated_commands}
+    external_commands = _external_commands(builtin_commands)
     # uv selects the environment; local Kit builds still need their native runtime paths.
     # Delegate before importing tasks or simulator libraries, and avoid wrapping the child twice.
-    runtime_commands = {*subcommands, "list_envs", "demo", "example", "teleop"}
+    runtime_commands = {*builtin_commands, *external_commands}
     configured_path = os.environ.get("ISAAC_PATH")
     if (
         len(sys.argv) > 1
@@ -224,9 +248,13 @@ def cli() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "teleop":
         teleop(sys.argv[2:])
         return
+    if len(sys.argv) > 1 and sys.argv[1] in external_commands:
+        _run_external_command(external_commands[sys.argv[1]], sys.argv[2:])
+        return
 
     executable_name = Path(sys.argv[0]).name
     default_prog = "isaaclab.bat" if is_windows() else "isaaclab.sh"
+    external_command_help = "".join(f"\n  {command:<15} External command" for command in sorted(external_commands))
     parser = argparse.ArgumentParser(
         description="Isaac Lab CLI",
         prog=executable_name if executable_name != "__main__.py" else default_prog,
@@ -246,6 +274,7 @@ def cli() -> None:
             "  zero_agent      Run an environment with zero actions\n"
             "  random_agent    Run an environment with random actions\n"
             "  teleop          Run a live teleoperation, demo recording, or demo replay workflow"
+            f"{external_command_help}"
         ),
     )
 

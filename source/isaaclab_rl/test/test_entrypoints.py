@@ -56,9 +56,11 @@ def test_public_namespaces_do_not_import_unrelated_frameworks(statement: str, un
         [
             sys.executable,
             "-c",
-            f"{statement}; import sys; "
-            f"unexpected = [name for name in {unexpected_modules_literal} if name in sys.modules]; "
-            "assert not unexpected, f'Unexpected eager imports: {unexpected}'",
+            (
+                f"{statement}; import sys; "
+                f"unexpected = [name for name in {unexpected_modules_literal} if name in sys.modules]; "
+                "assert not unexpected, f'Unexpected eager imports: {unexpected}'"
+            ),
         ],
         capture_output=True,
         text=True,
@@ -755,6 +757,34 @@ def test_rsl_training_registers_external_task_before_agent_discovery(monkeypatch
 
     assert args.task == task_name
     assert not args.resume_optimizer_state
+
+
+def test_rsl_training_runs_task_owned_registration_without_cli_callback(monkeypatch) -> None:
+    """RSL-RL invokes registration metadata declared by the selected Gym task."""
+    from isaaclab_rl.entrypoints.backends import train_rsl_rl
+
+    from isaaclab_tasks.utils import task_registration
+
+    task_name = "Isaac-TaskOwnedCallbackOrderTest"
+    callback = mock.Mock(return_value=[])
+    monkeypatch.setattr(task_registration, "load_external_tasks", mock.Mock())
+    gym.registry.pop(task_name, None)
+    gym.register(
+        id=task_name,
+        entry_point="dummy:Env",
+        kwargs={
+            task_registration.TASK_REGISTRATION_CALLBACK_KEY: callback,
+            "rsl_rl_cfg_entry_point": "dummy:AgentCfg",
+        },
+    )
+
+    try:
+        args = train_rsl_rl._parse_args(["--task", task_name])
+    finally:
+        gym.registry.pop(task_name, None)
+
+    assert args.task == task_name
+    callback.assert_called_once_with()
 
 
 def test_skrl_training_restores_jax_backend(monkeypatch) -> None:

@@ -10,8 +10,6 @@ from __future__ import annotations
 import argparse
 from typing import TYPE_CHECKING
 
-from isaaclab.utils.string import string_to_callable
-
 from ..common import resolve_seed
 
 if TYPE_CHECKING:
@@ -70,10 +68,9 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser) -> None:
 
 
 def register_external_tasks(argv: list[str]) -> list[str] | None:
-    """Run the ``--external_callback`` named in *argv* and return the arguments it did not consume.
+    """Run explicit or task-owned registration and return arguments it did not consume.
 
-    Downstream code registers its tasks in the callback, so it has to run before the preset setup
-    reads the Gym metadata of those tasks.
+    Registration has to run before preset setup reads the selected task's Gym metadata.
 
     Args:
         argv: Command-line arguments excluding the executable name.
@@ -81,12 +78,9 @@ def register_external_tasks(argv: list[str]) -> list[str] | None:
     Returns:
         The arguments left for Hydra, or None when no callback was requested.
     """
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--external_callback")
-    args, _ = parser.parse_known_args(argv)
-    if not args.external_callback:
-        return None
-    return string_to_callable(args.external_callback, separator=".")()
+    from isaaclab_tasks.utils.task_registration import run_task_registration_callback
+
+    return run_task_registration_callback(argv)
 
 
 def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlBaseRunnerCfg:

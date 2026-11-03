@@ -321,16 +321,99 @@ def test_cli_routes_program_without_loading_external_tasks(command_name, args):
 def test_cli_loads_downstream_tasks_before_benchmark():
     """Benchmarking must discover tasks from installed projects."""
     task_entry_point = mock.Mock()
+
+    def entry_points(*, group):
+        return [task_entry_point] if group == "isaaclab.tasks" else []
+
     with (
-        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=[task_entry_point]) as entry_points,
+        mock.patch.object(cli.importlib.metadata, "entry_points", side_effect=entry_points) as discover_entry_points,
         mock.patch.object(cli, "benchmark") as benchmark,
         mock.patch.object(sys, "argv", ["isaaclab", "benchmark", "runtime", "--task", "Example"]),
     ):
         cli.cli()
 
-    entry_points.assert_called_once_with(group="isaaclab.tasks")
+    assert discover_entry_points.call_args_list == [
+        mock.call(group="isaaclab.cli"),
+        mock.call(group="isaaclab.tasks"),
+    ]
     task_entry_point.load.assert_called_once_with()
     benchmark.assert_called_once_with(["runtime", "--task", "Example"])
+
+
+@pytest.mark.parametrize("status", [None, 0, 3])
+def test_cli_dispatches_external_command_and_propagates_status(status):
+    """An external command loads only when selected and receives its remaining arguments."""
+    command = mock.Mock(return_value=status)
+    entry_point = mock.Mock(name="arena_entry_point")
+    entry_point.name = "arena"
+    entry_point.load.return_value = command
+    with (
+        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=[entry_point]),
+        mock.patch.object(sys, "argv", ["isaaclab", "arena", "evaluate", "--help"]),
+    ):
+        if status:
+            with pytest.raises(SystemExit) as exc_info:
+                cli.cli()
+            assert exc_info.value.code == status
+        else:
+            cli.cli()
+
+    entry_point.load.assert_called_once_with()
+    command.assert_called_once_with(["evaluate", "--help"])
+
+
+def test_cli_rejects_external_command_name_collisions():
+    """External commands must not silently replace built-ins or one another."""
+    train_entry_point = mock.Mock()
+    train_entry_point.name = "train"
+    with (
+        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=[train_entry_point]),
+        pytest.raises(RuntimeError, match="conflicts with a built-in command"),
+    ):
+        cli.cli()
+
+    arena_entry_points = [mock.Mock(), mock.Mock()]
+    for entry_point in arena_entry_points:
+        entry_point.name = "arena"
+    with (
+        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=arena_entry_points),
+        pytest.raises(RuntimeError, match="Multiple external Isaac Lab commands"),
+    ):
+        cli.cli()
+
+
+def test_cli_lists_external_commands_without_loading_them(capsys):
+    """Top-level help discovers external command names without importing plugins."""
+    entry_point = mock.Mock()
+    entry_point.name = "arena"
+    with (
+        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=[entry_point]),
+        mock.patch.object(sys, "argv", ["isaaclab", "--help"]),
+        pytest.raises(SystemExit, match="0"),
+    ):
+        cli.cli()
+
+    assert "arena           External command" in capsys.readouterr().out
+    entry_point.load.assert_not_called()
+
+
+def test_external_command_uses_isaac_sim_runtime_reexec(tmp_path):
+    """An external command must re-exec before its plugin implementation is imported."""
+    (tmp_path / "python.sh").touch()
+    entry_point = mock.Mock()
+    entry_point.name = "arena"
+    with (
+        mock.patch.object(cli.importlib.metadata, "entry_points", return_value=[entry_point]),
+        mock.patch.object(cli, "DEFAULT_ISAAC_SIM_PATH", tmp_path),
+        mock.patch.object(cli, "runs_isaac_sim_python", return_value=True),
+        mock.patch.object(cli, "run_python_command") as run_python,
+        mock.patch.dict(cli.os.environ, {}, clear=True),
+        mock.patch.object(sys, "argv", ["isaaclab", "arena", "evaluate"]),
+    ):
+        cli.cli()
+
+    run_python.assert_called_once_with("-m", ["isaaclab", "arena", "evaluate"], check=True)
+    entry_point.load.assert_not_called()
 
 
 def test_list_envs_cli_dispatches_without_preloading_tasks():
